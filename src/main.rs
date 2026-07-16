@@ -1,16 +1,26 @@
 use crate::benchmarktesting::benchpress;
-use crate::hallucinations::{ hallucinate_normal_distribution};
-use crate::uvex_telescope::UVEXConfiguration;
+use crate::hallucinations::{hallucinate_dead_pixel_map, hallucinate_normal_distribution};
+use crate::uvex_telescope::{UVEXConfiguration, UVEX};
 
 pub mod uvex_telescope;
 mod hallucinations;
 mod benchmarktesting;
 
 fn main() {
-    hallucinate_normal_distribution(4096,"dark_current.fits", 0.0001,0.001);
-    benchpress()
 
-   // let details = UVEXConfiguration::default().to_yaml("config.yaml");
+
+    hallucinate_dead_pixel_map(4096,
+                               "/Users/mayabasu/Desktop/uvex_psf_files/dead_pixel.fits",
+                               1000,
+                               50,
+                               400,
+                               50);
+    hallucinate_normal_distribution(4096,"/Users/mayabasu/Desktop/uvex_psf_files/dar_current.fits", 0.0001,0.001);
+    //benchpress()
+    //UVEX::generate_random_dead_pixel_map();
+
+    let details = UVEXConfiguration::default();
+    UVEX::initialize(details);
 
     /*
 

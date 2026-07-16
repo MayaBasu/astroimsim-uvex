@@ -74,9 +74,10 @@ pub fn hallucinate_dead_pixel_map(size: usize,
     for _j in (0..num_rectangles){
         let corner_x = uniform_distribution.sample(&mut rand::rng());
         let corner_y = uniform_distribution.sample(&mut rand::rng());
-        let size = size_distribution.sample(&mut rand::rng());
-        for column in (0..size){
-            for row in 0..size{
+        let x_size = size_distribution.sample(&mut rand::rng());
+        let y_size = size_distribution.sample(&mut rand::rng());
+        for column in (0..y_size){
+            for row in 0..x_size{
                 data_2d[column + corner_y][row + corner_x] = 0.0
             }
         }
@@ -84,7 +85,7 @@ pub fn hallucinate_dead_pixel_map(size: usize,
     }
     let data = data_2d.iter().map(|v| v.to_owned()).flatten().collect();
     let mut primary_hdu = Hdu::new(&shape, data);
-    
+
     Fits::create(fits_path, primary_hdu).expect("Failed to create fits for custom values");
     println!("Hallucinated you a {size}*{size} dead pixel map in {:?} ms at {:?}", now.elapsed().as_millis(),fits_path)
 

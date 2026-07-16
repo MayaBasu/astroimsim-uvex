@@ -10,6 +10,7 @@ use astroimsim_spectra::spectral_response::SpectralResponseCurve;
 use astroimsim_data::prelude::*;
 use astroimsim_geometry::prelude::Coordinates::{ABSOLUTE, RELATIVE};
 use serde::Serialize;
+use crate::hallucinations::hallucinate_dead_pixel_map;
 use crate::uvex_telescope::UseEffect::On;
 /*
 Run time inputs:
@@ -200,6 +201,34 @@ impl UVEX{
 
     pub fn spectral_grid()->GRID1D{
         GRID1D::new_empty(1.0,120.0,1000.0,0.01,1.0)
+    }
+
+    pub fn generate_random_dead_pixel_map(){
+        hallucinate_dead_pixel_map(4096,
+                                   "/Users/mayabasu/Desktop/uvex_psf_files/dead_pixel.fits",1000,0,0,0);
+    }
+
+
+
+    pub fn dead_pixel_map(&self, detector:usize)-> SpatialEffect{
+        let path = "/Users/mayabasu/Desktop/uvex_psf_files/dead_pixel.fits";
+        let grid = self.detector_array.detectors[detector].grid.clone();
+        let dead_pixels = SpatialEffect::new_empty(
+            "Dead Pixel map for detector",
+            grid,
+            path);
+        dead_pixels
+    }
+
+
+    pub fn darkcurrent_map(&self, detector:usize)-> SpatialEffect{
+        let path = "/Users/mayabasu/Desktop/uvex_psf_files/dar_current.fits";
+        let grid = self.detector_array.detectors[detector].grid.clone();
+        let dead_pixels = SpatialEffect::new_empty(
+            "Dark current map for detector",
+            grid,
+            path);
+        dead_pixels
     }
 
 
