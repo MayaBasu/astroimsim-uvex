@@ -10,7 +10,7 @@ use astroimsim_spectra::spectral_response::SpectralResponseCurve;
 use astroimsim_data::prelude::*;
 use astroimsim_geometry::prelude::Coordinates::{ABSOLUTE, RELATIVE};
 use serde::Serialize;
-use crate::hallucinations::hallucinate_dead_pixel_map;
+use crate::hallucinations::{hallucinate_dead_pixel_map, hallucinate_normal_distribution};
 use crate::uvex_telescope::UseEffect::On;
 /*
 Run time inputs:
@@ -18,12 +18,12 @@ fuv/nuv exposure time
 sky background
 
  */
-#[derive(Serialize)]
+#[derive(Serialize,Clone)]
 pub enum UseEffect{
     On,
     Off
 }
-#[derive(Serialize)]
+#[derive(Serialize,Clone)]
 
 pub struct UVEXConfiguration {
     pub fuv_contamination: (UseEffect,&'static str),
@@ -37,8 +37,8 @@ pub struct UVEXConfiguration {
     pub dichroic: (UseEffect,&'static str),
     pub mirror_response: (UseEffect,&'static str),
 
-    pub fuv_psf: (UseEffect,&'static str),
-    pub nuv_psf: (UseEffect,&'static str),
+    pub fuv_psf: (UseEffect,&'static str, &'static str),
+    pub nuv_psf: (UseEffect,&'static str,&'static str),
 
     pub fuv_flatfield_illumination: (UseEffect,&'static str),
     pub nuv_flatfield_illumination: (UseEffect,&'static str),
@@ -55,40 +55,43 @@ pub struct UVEXConfiguration {
     pub x_gap: f64,
     pub y_gap: f64,
 
-}
+    pub gaussian_blur_std: (UseEffect,f64), //in oversampled pixels
 
+}
 
 impl UVEXConfiguration{
     pub fn default()-> UVEXConfiguration{
         UVEXConfiguration{
-            fuv_contamination: (On, "/Users/mayabasu/Desktop/uvex_psf_files/spectral_reponse_files/UVIM_FUV_contamination.dat"),
-            nuv_contamination: (On,"/Users/mayabasu/Desktop/uvex_psf_files/spectral_reponse_files/UVIM_NUV_contamination.dat"),
+            fuv_contamination: (On, "~/Desktop/uvex/spectral_response/UVIM_FUV_contamination.dat"),
+            nuv_contamination: (On,"~/Desktop/uvex/spectral_response/UVIM_NUV_contamination.dat"),
 
-            fuv_response: (On,"/Users/mayabasu/Desktop/uvex_psf_files/spectral_reponse_files/UVIM_FUV_filter_response.dat"),
-            nuv_response: (On,"/Users/mayabasu/Desktop/uvex_psf_files/spectral_reponse_files/UVIM_NUV_filter_response.dat"),
+            fuv_response: (On,"~/Desktop/uvex/spectral_response/UVIM_FUV_filter_response.dat"),
+            nuv_response: (On,"~/Desktop/uvex/spectral_response/UVIM_NUV_filter_response.dat"),
 
-            nuv_qe_response: (On,"/Users/mayabasu/Desktop/uvex_psf_files/spectral_reponse_files/UVIM_NUV_QE.dat"),
+            nuv_qe_response: (On,"~/Desktop/uvex/spectral_response/UVIM_NUV_QE.dat"),
 
-            dichroic: (On,"/Users/mayabasu/Desktop/uvex_psf_files/spectral_reponse_files/UVIM_dichroic_response.dat"),
-            mirror_response: (On,"/Users/mayabasu/Desktop/uvex_psf_files/spectral_reponse_files/mirror_reflectivity.dat"),
+            dichroic: (On,"~/Desktop/uvex/spectral_response/UVIM_dichroic_response.dat"),
+            mirror_response: (On,"~/Desktop/uvex/spectral_response/mirror_reflectivity.dat"),
 
-            fuv_psf: (On,"/Users/mayabasu/Desktop/uvex_psf_files/FUV PSF"),
-            nuv_psf: (On,"/Users/mayabasu/Desktop/uvex_psf_files/NUV PSF"),
+            fuv_psf: (On,"~/Desktop/uvex/FUV_PSF","~/Desktop/uvex/FUV_PSF_BLURRED"),
+            nuv_psf: (On,"~/Desktop/uvex/NUV_PSF","~/Desktop/uvex/NUV_PSF_BLURRED"),
 
-            fuv_flatfield_illumination: (On,"/Users/mayabasu/Desktop/uvex_psf_files/FUV_vignetting_model_4096.fits"),
-            nuv_flatfield_illumination: (On,"/Users/mayabasu/Desktop/uvex_psf_files/NUV_vignetting_model_4096.fits"),
+            fuv_flatfield_illumination: (On,"~/Desktop/uvex/vinietting/FUV_vignetting_model_4096.fits"),
+            nuv_flatfield_illumination: (On,"~/Desktop/uvex/vinietting/NUV_vignetting_model_4096.fits"),
 
-            fuv_read_noise:  (On,"TODO"),
-            nuv_read_noise: (On,"TODO"),
+            fuv_read_noise:  (On,"~/Desktop/uvex/detector_effects/fuv_read_noise"),
+            nuv_read_noise: (On,"~/Desktop/uvex/detector_effects/nuv_read_noise"),
 
-            fuv_dark_current: (On,"TODO"),
-            nuv_dark_current: (On,"TODO"),
+            fuv_dark_current: (On,"~/Desktop/uvex/detector_effects/fuv_dark_current"),
+            nuv_dark_current: (On,"~/Desktop/uvex/detector_effects/nuv_dark_current"),
 
-            fuv_dead_pixels:(On, "TODO"),
-            nuv_dead_pixels: (On,"TODO"),
+            fuv_dead_pixels:(On, "~/Desktop/uvex/detector_effects/fuv_dead_pixels"),
+            nuv_dead_pixels: (On,"~/Desktop/uvex/detector_effects/nuv_dead_pixels"),
 
             x_gap: 0.0,
             y_gap: 0.0,
+
+            gaussian_blur_std: (On,20.0),
         }
     }
 
@@ -113,6 +116,8 @@ pub struct UVEX{
 
     pub fuv_psf: PsfGrid,
     pub nuv_psf: PsfGrid,
+    
+    
 
     pub detector_array: DetectorArray,
 
@@ -147,8 +152,6 @@ impl UVEX{
             config.nuv_flatfield_illumination.1);
         nuv_flatfield.load_data(8+30);
 
-
-
         //load in psf files
         let mut fuv_psf = PsfGrid::new(
             "FUV PSF grid",
@@ -179,8 +182,8 @@ impl UVEX{
             detector_plane_center);
 
 
-        UVEX{
-            config,
+        let uvex = UVEX{
+            config:config.clone(),
             fuv_spectral_response,
             nuv_spectral_response,
             fuv_flatfield,
@@ -188,7 +191,9 @@ impl UVEX{
             fuv_psf,
             nuv_psf,
             detector_array,
-        }
+        };
+        uvex.prepare_blurred_psf(config.fuv_psf.2,config.fuv_psf.2);
+        uvex
 
 
 
@@ -202,14 +207,25 @@ impl UVEX{
     pub fn spectral_grid()->GRID1D{
         GRID1D::new_empty(1.0,120.0,1000.0,0.01,1.0)
     }
+    
+    pub fn generate_missing_data(&self){
+        hallucinate_normal_distribution(, fits_path:&str, ave:f64,std:f64){
+    }
 
     pub fn generate_random_dead_pixel_map(){
         hallucinate_dead_pixel_map(4096,
                                    "/Users/mayabasu/Desktop/uvex_psf_files/dead_pixel.fits",1000,0,0,0);
     }
 
-
-
+    pub fn prepare_blurred_psf(&self, fuv_direct:&'static str, nuv_direct:&'static str) {
+        match self.config.gaussian_blur_std.0 {
+            On => {
+                self.fuv_psf.gaussian_blur(fuv_direct, self.config.gaussian_blur_std.1);
+                self.nuv_psf.gaussian_blur(nuv_direct, self.config.gaussian_blur_std.1);
+            }
+            UseEffect::Off => {println!("Gaussian blur is turned off")}
+        }
+    }
     pub fn dead_pixel_map(&self, detector:usize)-> SpatialEffect{
         let path = "/Users/mayabasu/Desktop/uvex_psf_files/dead_pixel.fits";
         let grid = self.detector_array.detectors[detector].grid.clone();

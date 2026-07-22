@@ -8,6 +8,8 @@ mod benchmarktesting;
 
 fn main() {
 
+    /*
+
 
     hallucinate_dead_pixel_map(4096,
                                "/Users/mayabasu/Desktop/uvex_psf_files/dead_pixel.fits",
@@ -16,11 +18,18 @@ fn main() {
                                400,
                                50);
     hallucinate_normal_distribution(4096,"/Users/mayabasu/Desktop/uvex_psf_files/dar_current.fits", 0.0001,0.001);
+    */
     //benchpress()
+
     //UVEX::generate_random_dead_pixel_map();
 
-    let details = UVEXConfiguration::default();
-    UVEX::initialize(details);
+    let configuration = UVEXConfiguration::default();
+    configuration.to_yaml("config.yaml");
+
+    //let uvex = UVEX::initialize(details);
+
+   // let psf_grid = uvex.fuv_psf;
+   // psf_grid.gaussian_blur("/Users/mayabasu/Desktop/blurred_psf",10.0)
 
     /*
 
