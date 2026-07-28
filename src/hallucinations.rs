@@ -4,6 +4,7 @@ use std::time::Instant;
 
 
 pub fn hallucinate_normal_distribution(size:usize, fits_path:&str, ave:f64,std:f64){
+    println!("Trying for {:?}",fits_path);
     let now = Instant::now();
     let shape = [size, size];
     let normal = rand_distr::Normal::new(ave,std).unwrap();

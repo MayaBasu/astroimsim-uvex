@@ -129,61 +129,77 @@ If you do not want to have your data stored in this structure or have different 
 
 The directories in detector_effects (fuv_read_noise, nuv_dark current, etc) as also empty. When there is experimental data for these effects, there will be 9 files in each of these directories, one for each detector plane. However, at the moment, we will be populating them with synthetic data.
 
-
+If you have modified the configuration file, we will load in this new configuration to use instead of the default configuration. This configuration will be used to generate synthetic data for the dark current, dead pixel, and read noise maps which will be placed into the appropriate paths you specified in the configuration file.
 
 ```rust
+fn main(){
+    //Delete code which generates the default configuration file - after you modify this code to point to files on your own computer we will load in the modified configuration file.
+    let configuration = UVEXConfiguration::from_yaml("config.yaml");
+    //Generate 9 fits files, one per detector plane, for dark current, read noise, and dead pixel maps.
+    UVEX::generate_missing_data(configuration)
+}
+```
 
-fn main() {
-    //initialize the uvex instrument with the details in "configuration/details.yaml"
-    let uvex = uvex::initialize_uvex("configuration/uvex");
+
+# Detector Effects
+
+First we will run the instrument with no sources and a constant background to see the effect of turning on or off detector effects
+
+```rust
+fn main(){
+    let configuration = UVEXConfiguration::from_yaml("config.yaml");
+    let mut uvex = UVEX::initialize(configuration);
+    uvex.run((10.0,10.0),FullSpectrumSourceList::new_empty(0));
+
+
 }
 
 ```
+The read noise only effect gives random gaussian distributed noise. The dark current effect is exactly the same. This file happend to have an average of 10.0100011840813 and a std of 
+0.005001332952679914, with expected values of 10.01 and 0.005 respectively.
+
+![Read noise](images/Screenshot%202026-07-27%20at%2011.28.26%E2%80%AFPM.png)
+
+
+If we add in the dead pixel map, then a random assortment of dead lines, pixels, and rectangles will be added to the images.
+
+You can change the number of pixels, lines, and rectangles in the configuration file.
+![Read noise, dark current, and dead pixels](images/Screenshot%202026-07-27%20at%2011.34.39%E2%80%AFPM.png)
+
 
 
 # Sources
 
-We can create single point source by specifying a position in the view area (values for x and y between 0 and 1) as well as a spectrum and an overall brightness factor which is between 0 and 1.
- ```rust
-
-fn main() {
-    let spectrum: [f64;spectral_resolution] = [0.1,0.13,/* Insert your spectrum here */0.2];
-    let source_x = 0.2;
-    let source_y = 0.3;
-    let luminosity = 0.6;
-    let point_source = point_source::new(source_x,source_y, spectrum,luminosity);
-}
-
-```
-The UVEX instrument takes a source_list, which is a group of point_sources. We can either add custom point_sources to an empty source_list, or we can initialize a random source list to look at.
+The UVEX instrument takes a source_list, which is a group of point_sources. We can either add custom point_sources to an empty source_list, or we can initialize a random source list to look at. Let us try this later method first:
 
 
 ```rust
 fn main() {
+
+    let configuration = UVEXConfiguration::from_yaml("config.yaml");
+    let mut uvex = UVEX::initialize(configuration);
     
-    //make three point sources: point_source1, point_source2, and point_source3
-    //make a source list containing the first two sources
-    let mut curated_source_list = source_list::new_from(vec![point_source1,point_source2]);
-    //we can also add sources to an existing list
-    curated_source_list.add_source(point_source3);
-    
-    //alternatively, we can generate a random star field of sources which all share a spectrum but which 
-    
-    
-    let random_source_list = source_list::new_random_point_source_field(number_of_point_sources, //how many points
-                                                                  min_brightness, //minimum brightness of the random range
-                                                                  max_brightness, //maximum brightness of the random range
-                                                                  min_x,//minimum x position of the random range
-                                                                  max_x,//maximum x position of the random range
-                                                                  min_y,//minimum y position of the random range
-                                                                  max_y,//maximum x position of the random range
-                                                                  spectrum); //shared spectrum
-    
+    //create a spectrum which is a flat AB magnitude that will be shared by all point sources
+    let spectrum = PowerSpectrum::flat_AB(20.0,STANDARD_SPECTRAL_GRID,"Input Spectrum");
+    //create a randomly distributed point source field
+    let source_list = FullSpectrumSourceList::full_spectrum_point_source_field(
+        10000, //number of sources
+        100.0,  //minimum multaplicative factor on brightness
+        1000.0,  //maximum multaplicative factor on brightness
+        spectrum, //Spectrum of sources
+        &uvex.detector_array.detectors[0].grid //Where to populate these point sources? Detector 0
+    );
+    uvex.run((10.0,10.0),source_list); 
+
+
 }
 
 
 ```
 
+Now our output image contains 10,000 point sources as well:
 
-Once you have a source_list you are ready to feed it into the uvex_instrument and get images.
+
+![with sources](images/Screenshot%202026-07-27%20at%2011.53.29%E2%80%AFPM.png)
+
 
