@@ -25,65 +25,79 @@ Viewing the config.yaml file which hs just been created, we get the following:
 
 ```yaml
 
-
 fuv_contamination:
-  - On
-  - ~/Desktop/uvex/spectral_response/UVIM_FUV_contamination.dat
+  - Off
+  - /Users/mayabasu/Desktop/uvex/spectral_response/UVIM_FUV_contamination.dat
 nuv_contamination:
-  - On
-  - ~/Desktop/uvex/spectral_response/UVIM_NUV_contamination.dat
+  - Off
+  - /Users/mayabasu/Desktop/uvex/spectral_response/UVIM_NUV_contamination.dat
 fuv_response:
-  - On
-  - ~/Desktop/uvex/spectral_response/UVIM_FUV_filter_response.dat
+  - Off
+  - /Users/mayabasu/Desktop/uvex/spectral_response/UVIM_FUV_filter_response.dat
 nuv_response:
-  - On
-  - ~/Desktop/uvex/spectral_response/UVIM_NUV_filter_response.dat
+  - Off
+  - /Users/mayabasu/Desktop/uvex/spectral_response/UVIM_NUV_filter_response.dat
 nuv_qe_response:
-  - On
-  - ~/Desktop/uvex/spectral_response/UVIM_NUV_QE.dat
+  - Off
+  - /Users/mayabasu/Desktop/uvex/spectral_response/UVIM_NUV_QE.dat
 dichroic:
-  - On
-  - ~/Desktop/uvex/spectral_response/UVIM_dichroic_response.dat
+  - Off
+  - /Users/mayabasu/Desktop/uvex/spectral_response/UVIM_dichroic_response.dat
 mirror_response:
-  - On
-  - ~/Desktop/uvex/spectral_response/mirror_reflectivity.dat
+  - Off
+  - /Users/mayabasu/Desktop/uvex/spectral_response/mirror_reflectivity.dat
 fuv_psf:
-  - On
-  - ~/Desktop/uvex/FUV_PSF
-  - ~Desktop/uvex/FUV_PSF_BLURRED
+  - Off
+  - /Users/mayabasu/Desktop/uvex/FUV_PSF
+  - ~/Desktop/uvex/FUV_PSF_BLURRED
 nuv_psf:
-  - On
-  - ~/Desktop/uvex/NUV_PSF
+  - Off
+  - /Users/mayabasu/Desktop/uvex/NUV_PSF
   - ~/Desktop/uvex/NUV_PSF_BLURRED
 fuv_flatfield_illumination:
-  - On
-  - ~/Desktop/uvex/vinietting/FUV_vignetting_model_4096.fits
+  - Off
+  - /Users/mayabasu/Desktop/uvex/vinietting/FUV_vignetting_model_4096.fits
 nuv_flatfield_illumination:
-  - On
-  - ~/Desktop/uvex/vinietting/NUV_vignetting_model_4096.fits
+  - Off
+  - /Users/mayabasu/Desktop/uvex/vinietting/NUV_vignetting_model_4096.fits
 fuv_read_noise:
-  - On
-  - ~/Desktop/uvex/detector_effects/fuv_read_noise
+  - Off
+  - /Users/mayabasu/Desktop/uvex/detector_effects/fuv_read_noise
 nuv_read_noise:
-  - On
-  - ~/Desktop/uvex/detector_effects/nuv_read_noise
+  - Off
+  - /Users/mayabasu/Desktop/uvex/detector_effects/nuv_read_noise
 fuv_dark_current:
-  - On
-  - ~/Desktop/uvex/detector_effects/fuv_dark_current
+  - Off
+  - /Users/mayabasu/Desktop/uvex/detector_effects/fuv_dark_current
 nuv_dark_current:
-  - On
-  - ~/Desktop/uvex/detector_effects/nuv_dark_current
+  - Off
+  - /Users/mayabasu/Desktop/uvex/detector_effects/nuv_dark_current
 fuv_dead_pixels:
-  - On
-  - ~/Desktop/uvex/detector_effects/fuv_dead_pixels
+  - Off
+  - /Users/mayabasu/Desktop/uvex/detector_effects/fuv_dead_pixels
 nuv_dead_pixels:
-  - On
-  - ~/Desktop/uvex/detector_effects/nuv_dead_pixels
+  - Off
+  - /Users/mayabasu/Desktop/uvex/detector_effects/nuv_dead_pixels
 x_gap: 0.0
 y_gap: 0.0
 gaussian_blur_std:
-  - On
+  - Off
   - 20.0
+read_noise:
+  - Off
+  - 2.0
+  - 1.0
+dark_current:
+  - Off
+  - 0.01
+  - 0.005
+dead_pixels:
+  - Off
+  - 100
+  - 10
+  - 10
+  - 5
+
 
 
 

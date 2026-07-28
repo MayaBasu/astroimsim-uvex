@@ -31,8 +31,8 @@ fn main() {
 
     //UVEX::generate_random_dead_pixel_map();
 
-    //let configuration = UVEXConfiguration::default(Off);
-    //configuration.to_yaml("config.yaml");
+    let configuration = UVEXConfiguration::default(Off);
+    configuration.to_yaml("config.yaml");
     let configuration = UVEXConfiguration::from_yaml("config.yaml");
 
     //UVEX::generate_missing_data(configuration)
