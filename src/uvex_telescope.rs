@@ -77,6 +77,7 @@ impl UVEX{
 
 
         //load in psf files
+        println!("loading fuv psf files");
         let mut fuv_psf = PsfGrid::new(
             "FUV PSF grid".to_string(),
             UVEX::empty_fuv(),
@@ -116,11 +117,13 @@ impl UVEX{
         match config.gaussian_blur_std.0 {
             UseEffect::On => {
                 println!("rying to load from {:?}",config.fuv_psf.2.clone());
-                fuv_psf.gaussian_blur(config.fuv_psf.2.clone(), config.gaussian_blur_std.1);
-                nuv_psf.gaussian_blur(config.nuv_psf.2.clone(), config.gaussian_blur_std.1);
+                //fuv_psf.gaussian_blur(config.fuv_psf.2.clone(), config.gaussian_blur_std.1);
+                //nuv_psf.gaussian_blur(config.nuv_psf.2.clone(), config.gaussian_blur_std.1);
             }
             UseEffect::Off => {println!("Gaussian blur is turned off")}
         }
+
+
 
         let mut blurred_fuv_psf = PsfGrid::new(
             "blurred FUV PSF grid".to_string(),
@@ -135,6 +138,8 @@ impl UVEX{
             config.nuv_psf.2.clone(),
             center_keys.clone());
         blurred_nuv_psf.load_data_frames(64,64);
+
+
 
 
 
@@ -185,12 +190,15 @@ impl UVEX{
         let coordinate_system = CoordinateSystem::new(
             flatfield_x_axis,
             flatfield_y_axis,
-            center_absolute.values(),
+            (0.0,0.0),
             "Detector Coordinate System",
             "magenta");
-
+        GRID2D::new_empty((num_pixels,num_pixels),(1.0,1.0),Point::new(-0.56,0.06,ABSOLUTE).convert(&RELATIVE(coordinate_system.clone())).values(),0.0000001,Coordinates::RELATIVE(coordinate_system))
+        /*
         GRID2D::new_from_width(
-            (num_pixels,num_pixels),(1.0,1.0), (0.0,0.0),0.0000001,Coordinates::RELATIVE(coordinate_system))
+            (num_pixels,num_pixels),(num_pixels as f64,num_pixels as f64), (0.0,0.0),0.0000001,Coordinates::RELATIVE(coordinate_system))
+
+         */
 
 
     }
@@ -300,7 +308,7 @@ impl UVEX{
         };
         let detector_grid = GRID2D::new_empty(
             (x_num,y_num),
-            (1.0 + x_gap_deg,1.0 + y_gap_deg),
+            (detector_width_deg + x_gap_deg,detector_width_deg + y_gap_deg),
             detector_grid_center.to_absolute().values(),//(-0.56, -0.06),
             0.001,
             ABSOLUTE);
@@ -385,143 +393,136 @@ impl UVEX{
     }
 
 
-    pub fn run(&mut self, background:(f64,f64), mut source_list: FullSpectrumSourceList){
-
-
+    pub fn run(&mut self, background:(f64,f64), mut source_list: FullSpectrumSourceList) {
         println!("WARNING RUNNING WITH ARTIFICIAL BRIGHTNESS");
 
         let start = Instant::now();
-        let detector_grid =self.detector_array.detectors[0].grid.clone();
+        for i in 0..9{
+            let detector_grid = self.detector_array.detectors[i].grid.clone();
 
-        self.detector_array.detectors[0].create_constant_background(10.0,1.0);
+            self.detector_array.detectors[i].create_constant_background(10.0, 1.0);
 
 
-        match self.config.read_noise.0{
-            UseEffect::On => {
-                self.detector_array.detectors[0].add_effect(self.read_noise_maps.effects[0].1.clone(),0);
+            match self.config.read_noise.0 {
+                UseEffect::On => {
+                    self.detector_array.detectors[i].add_effect(self.read_noise_maps.effects[i].1.clone(), 0);
+                }
+                UseEffect::Off => { println!("Read Noise is Turnned Off") }
             }
-            UseEffect::Off => {println!("Read Noise is Turnned Off")}
-        }
-        match self.config.dark_current.0{
-            UseEffect::On => {
-                self.detector_array.detectors[0].add_effect(self.dark_current_maps.effects[0].1.clone(),0);
-
+            match self.config.dark_current.0 {
+                UseEffect::On => {
+                    self.detector_array.detectors[i].add_effect(self.dark_current_maps.effects[i].1.clone(), 0);
+                }
+                UseEffect::Off => { println!("dark current is turned off") }
             }
-            UseEffect::Off => {println!("dark current is turned off")}
-        }
 
 
-
-        self.detector_array.detectors[0].write(13);
-
+            //self.detector_array.detectors[0].write(13);
 
 
-       let mut dropped = 0;
-           let detector_grid = self.detector_array.detectors[0].grid.clone();
-           for (num, point) in source_list.sources.iter().enumerate(){
-
-               if num % 100 ==0{
-                   println!("Done {:?} sources for detector number {:?}", num,0)
-               }
-               let bands = point.to_bands(&self.fuv_spectral_response,&self.nuv_spectral_response, UVEX::area());
+            let mut dropped = 0;
+            let detector_grid = self.detector_array.detectors[i].grid.clone();
+            for (num, point) in source_list.sources.iter().enumerate() {
+                if num % 100 == 0 {
+                    println!("Done {:?} sources for detector number {:?}", num, i)
+                }
+                let bands = point.to_bands(&self.fuv_spectral_response, &self.nuv_spectral_response, UVEX::area());
 
                 let mut rng = rand::rng();
 
-               match detector_grid.inside_or_outside(&point.point){ //TODO remove many unneeded clone() calls by borrowing Points
-                   Location::Outside => {dropped +=1}
-                   Location::Inside => {let psf = self.blurred_fuv_psf.interpolated_psf(&point.point);
-                       let ((x_mod,y_mod),binned_psf) = detector_grid.bin_up_patch(point.point.clone(),&psf,10); //TODO scale is fixed
-                       //println!("{:?}",(x_mod,y_mod));
-                       let binned_matrix_x = binned_psf[0].len();
-                       let binned_matrix_y = binned_psf.len();
+                match detector_grid.inside_or_outside(&point.point) { //TODO remove many unneeded clone() calls by borrowing Points
+                    Location::Outside => { dropped += 1 }
+                    Location::Inside => {
+                        let psf = self.blurred_fuv_psf.interpolated_psf(&point.point);
+                        let ((x_mod, y_mod), binned_psf) = detector_grid.bin_up_patch(point.point.clone(), &psf, 10); //TODO scale is fixed
+                        //println!("{:?}",(x_mod,y_mod));
+                        let binned_matrix_x = binned_psf[0].len();
+                        let binned_matrix_y = binned_psf.len();
 
-                       for row in 0..binned_matrix_y{
-                           for column in 0..binned_matrix_x{
-
-
-                               //println!("{}{}",column + y, row + y);
-                               if column + y_mod < detector_grid.x_num && row + x_mod < detector_grid.y_num{
-
-                                   let fuv_flux =binned_psf[column][row] as f64*bands.fuv*point.scale;
-                                   let nuv_flux =binned_psf[column][row] as f64*bands.nuv*point.scale;
-                                   if (fuv_flux == 0.0) &&(nuv_flux ==0.0){
-                                       continue
-                                   }else{
-                                       // println!("flux is {:?}", flux);
-                                     //  println!("fuv flux {:?}",fuv_flux);
-                                    //    let fuv_poisson = Poisson::new(fuv_flux as f64).unwrap();
-                                    //   let nuv_poisson = Poisson::new(nuv_flux as f64).unwrap();
-                                    //   let fuv = fuv_poisson.sample(&mut rng) as f64;
-                                     //  let nuv = nuv_poisson.sample(&mut rng) as f64;
-                                       self.detector_array.detectors[0].data[column + y_mod][row + x_mod][0] += fuv_flux;
-                                       self.detector_array.detectors[0].data[column + y_mod][row + x_mod][1] += nuv_flux;
-                                      // self.detector_array.detectors[0].data[column + y_mod][row + x_mod][2] += fuv as f64 ;
-                                      // self.detector_array.detectors[0].data[column + y_mod][row + x_mod][3] += nuv as f64 ;
-                                       //bin.sample(&mut rng) as f32;
-                                   }
+                        for row in 0..binned_matrix_y {
+                            for column in 0..binned_matrix_x {
 
 
+                                //println!("{}{}",column + y, row + y);
+                                if column + y_mod < detector_grid.x_num && row + x_mod < detector_grid.y_num {
+                                    let fuv_flux = binned_psf[column][row] as f64 * bands.fuv * point.scale;
+                                    let nuv_flux = binned_psf[column][row] as f64 * bands.nuv * point.scale;
+                                    if (fuv_flux == 0.0) && (nuv_flux == 0.0) {
+                                        continue
+                                    } else {
+                                        // println!("flux is {:?}", flux);
+                                        //  println!("fuv flux {:?}",fuv_flux);
+                                        //    let fuv_poisson = Poisson::new(fuv_flux as f64).unwrap();
+                                        //   let nuv_poisson = Poisson::new(nuv_flux as f64).unwrap();
+                                        //   let fuv = fuv_poisson.sample(&mut rng) as f64;
+                                        //  let nuv = nuv_poisson.sample(&mut rng) as f64;
+                                        self.detector_array.detectors[i].data[column + y_mod][row + x_mod][0] += fuv_flux;
+                                        self.detector_array.detectors[i].data[column + y_mod][row + x_mod][1] += nuv_flux;
+                                        // self.detector_array.detectors[0].data[column + y_mod][row + x_mod][2] += fuv as f64 ;
+                                        // self.detector_array.detectors[0].data[column + y_mod][row + x_mod][3] += nuv as f64 ;
+                                        //bin.sample(&mut rng) as f32;
+                                    }
+                                } else {
+                                    // println!("dropping pixel");
+                                }
 
-                               }else{
-                                   // println!("dropping pixel");
-                               }
-
-                               // println!("modifying pixel {:?} to be {:?}",(row + x_mod,column + y_mod),binned_psf[column][row]);
-                           }
-                       }}
-               }
-
-
-
-
-
-
-
-               // data[0][0]  += 100.0;
-
-
-           }
-
-        match self.config.fuv_flatfield_illumination.0{
-            UseEffect::On => {
-                for row in 0..self.detector_array.detectors[0].grid.y_num{
-                    for column in 0..self.detector_array.detectors[0].grid.x_num{
-                        let grid_number = self.detector_array.detectors[0].grid.grid_number(column,row);
-                        let location = self.detector_array.detectors[0].grid.locate(grid_number);
-                        let fuv_vinietting = self.fuv_flatfield.get_data(&location);
-                        println!("{fuv_vinietting} {grid_number} {location:?}");
-                        let nuv_vinietting = self.nuv_flatfield.get_data(&location);
-                        self.detector_array.detectors[0].data[column][row][0] = self.detector_array.detectors[0].data[column][row][0]*fuv_vinietting;
-                        self.detector_array.detectors[0].data[column][row][1] = self.detector_array.detectors[0].data[column][row][1]*nuv_vinietting;
+                                // println!("modifying pixel {:?} to be {:?}",(row + x_mod,column + y_mod),binned_psf[column][row]);
+                            }
+                        }
                     }
                 }
 
-            } //TODO remove this clone
-            UseEffect::Off => {println!("vinietting is off")}
+
+                // data[0][0]  += 100.0;
+
+            }
+
+            match self.config.fuv_flatfield_illumination.0 {
+                UseEffect::On => {
+                    for row in 0..self.detector_array.detectors[i].grid.y_num {
+                        for column in 0..self.detector_array.detectors[i].grid.x_num {
+                            let grid_number = self.detector_array.detectors[i].grid.grid_number(column, row);
+                            let location = self.detector_array.detectors[i].grid.locate(grid_number);
+                            let fuv_vinietting = self.fuv_flatfield.get_data(&location);
+                            //   println!("{fuv_vinietting} {grid_number} {:?}",location.to_absolute());
+                            //  println!("{:?}", self.fuv_flatfield.grid.locate(0).to_absolute());
+                            //  println!("{:?}", self.detector_array.detectors[i].grid.locate(0).to_absolute());
+
+                            let nuv_vinietting = self.nuv_flatfield.get_data(&location);
+                            self.detector_array.detectors[i].data[column][row][0] = self.detector_array.detectors[i].data[column][row][0] * fuv_vinietting;
+                            self.detector_array.detectors[i].data[column][row][1] = self.detector_array.detectors[i].data[column][row][1] * nuv_vinietting;
+                        }
+                    }
+                } //TODO remove this clone
+                UseEffect::Off => { println!("vinietting is off") }
+            }
+
+            match self.config.dead_pixels.0 {
+                UseEffect::On => {
+                    self.detector_array.detectors[i].multiply_effect(self.dead_pixel_maps.effects[i].1.clone(), 0);
+                }
+                UseEffect::Off => {
+                    println!("Dead pixel map is turrned off")
+                }
+            }
+
+            let size = self.detector_array.detectors[i].data.len();
+            let size2 = self.detector_array.detectors[i].data[0].len();
+
+            let sum: f64 = self.detector_array.detectors[i].data.iter().flatten().flatten().sum();
+            println!("Done computation: {:?} for detecgtor {:?}", sum, i);
+            self.detector_array.detectors[i].write(i);
+            let duration = start.elapsed();
+            println!("Time elapsed in expensive_function() is: {:?}, dropped {:?}", duration, dropped);
+
+            println!("made array, sum is  :{}, size is {:?}, {:?}", sum, size, size2);
+
+
+
         }
 
-        match self.config.dead_pixels.0{
-            UseEffect::On => {
-                self.detector_array.detectors[0].multiply_effect(self.dead_pixel_maps.effects[0].1.clone(), 0);
-            }
-            UseEffect::Off => {
-                println!("Dead pixel map is turrned off")
-            }
-        }
 
-        let size = self.detector_array.detectors[0].data.len();
-        let size2 = self.detector_array.detectors[0].data[0].len();
-
-        let sum:f64  = self.detector_array.detectors[0].data.iter().flatten().flatten().sum();
-        println!("Done computation: {:?} for detecgtor {:?}",sum,0);
-        self.detector_array.detectors[0].write(78);
-        let duration = start.elapsed();
-        println!("Time elapsed in expensive_function() is: {:?}, dropped {:?}", duration,dropped);
-
-        println!("made array, sum is  :{}, size is {:?}, {:?}",sum, size,size2);
-
-
-        /*
+    /*
 
 
         self.detector_array.detectors.into_par_iter().enumerate().for_each(|(i,mut detector)|

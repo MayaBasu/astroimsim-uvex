@@ -217,3 +217,13 @@ Now our output image contains 10,000 point sources as well:
 ![with sources](images/Screenshot%202026-07-27%20at%2011.53.29%E2%80%AFPM.png)
 
 
+
+
+If we turn on vinietting we can plot all 9 detector plane images in python to see the pattern:
+
+
+![vinietting and sources](images/justvinietting.png)
+
+Finally, all effects together:
+
+![All effects](images/Screenshot%202026-08-03%20at%206.02.26%E2%80%AFPM.png)
