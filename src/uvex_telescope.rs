@@ -116,14 +116,12 @@ impl UVEX{
 
         match config.gaussian_blur_std.0 {
             UseEffect::On => {
-                println!("rying to load from {:?}",config.fuv_psf.2.clone());
+                println!("trying to load from {:?}",config.fuv_psf.2.clone());
                 //fuv_psf.gaussian_blur(config.fuv_psf.2.clone(), config.gaussian_blur_std.1);
                 //nuv_psf.gaussian_blur(config.nuv_psf.2.clone(), config.gaussian_blur_std.1);
             }
             UseEffect::Off => {println!("Gaussian blur is turned off")}
         }
-
-
 
         let mut blurred_fuv_psf = PsfGrid::new(
             "blurred FUV PSF grid".to_string(),
@@ -390,25 +388,25 @@ impl UVEX{
     }
 
 
-    pub fn run(&mut self, background:(f64,f64), mut source_list: FullSpectrumSourceList) {
-        println!("WARNING RUNNING WITH ARTIFICIAL BRIGHTNESS");
+    pub fn run(&mut self, background:(f64,f64), mut source_list: FullSpectrumSourceList, exposure_time:f64) {
+        /*
+        Exposure time is in seconds
+         */
 
         let start = Instant::now();
         for i in 0..9{
-            let detector_grid = self.detector_array.detectors[i].grid.clone();
-
-            self.detector_array.detectors[i].create_constant_background(10.0, 1.0);
+            self.detector_array.detectors[i].create_constant_background(background.0,background.1);
 
 
             match self.config.read_noise.0 {
                 UseEffect::On => {
-                    self.detector_array.detectors[i].add_effect(self.read_noise_maps.effects[i].1.clone(), 0);
+                    self.detector_array.detectors[i].add_effect(self.read_noise_maps.effects[i].1.clone(), 0,EffectType::Once);
                 }
                 UseEffect::Off => { println!("Read Noise is Turnned Off") }
             }
             match self.config.dark_current.0 {
                 UseEffect::On => {
-                    self.detector_array.detectors[i].add_effect(self.dark_current_maps.effects[i].1.clone(), 0);
+                    self.detector_array.detectors[i].add_effect(self.dark_current_maps.effects[i].1.clone(), 0,EffectType::Exposure(exposure_time));
                 }
                 UseEffect::Off => { println!("dark current is turned off") }
             }
@@ -496,7 +494,7 @@ impl UVEX{
 
             match self.config.dead_pixels.0 {
                 UseEffect::On => {
-                    self.detector_array.detectors[i].multiply_effect(self.dead_pixel_maps.effects[i].1.clone(), 0);
+                    self.detector_array.detectors[i].multiply_effect(self.dead_pixel_maps.effects[i].1.clone(), 0,EffectType::Once);
                 }
                 UseEffect::Off => {
                     println!("Dead pixel map is turrned off")
@@ -517,98 +515,6 @@ impl UVEX{
 
 
         }
-
-
-    /*
-
-
-        self.detector_array.detectors.into_par_iter().enumerate().for_each(|(i,mut detector)|
-            { let mut dropped = 0;
-                let detector_grid = detector.grid.clone();
-                for (num, point) in source_list.sources.iter().enumerate(){
-
-                    if num % 10000 ==0{
-                        println!("Done {:?} sources for detector number {:?}", num,i)
-                    }
-                    let bands = point.to_bands(&self.fuv_spectral_response,&self.nuv_spectral_response, UVEX::area());
-
-                     let mut rng = rand::rng();
-
-                    match detector_grid.inside_or_outside(&point.point){ //TODO remove many unneeded clone() calls by borrowing Points
-                        Location::Outside => {dropped +=1}
-                        Location::Inside => {let psf = self.fuv_psf.interpolated_psf(&point.point);
-                            let ((x_mod,y_mod),binned_psf) = detector_grid.bin_up_patch(point.point.clone(),&psf,10); //TODO scale is fixed
-                            //println!("{:?}",(x_mod,y_mod));
-                            let binned_matrix_x = binned_psf[0].len();
-                            let binned_matrix_y = binned_psf.len();
-
-                            for row in 0..binned_matrix_y{
-                                for column in 0..binned_matrix_x{
-
-
-                                    //println!("{}{}",column + y, row + y);
-                                    if column + y_mod < detector_grid.x_num && row + x_mod < detector_grid.y_num{
-
-                                        let fuv_flux =binned_psf[column][row] as f64*bands.fuv;
-                                        let nuv_flux =binned_psf[column][row] as f64*bands.nuv;
-                                        if (fuv_flux == 0.0) &&(nuv_flux ==0.0){
-                                            continue
-                                        }else{
-                                            // println!("flux is {:?}", flux);
-                                           // println!("{:?}",fuv_flux);
-                                             let fuv_poisson = Poisson::new(fuv_flux as f64).unwrap();
-                                            let nuv_poisson = Poisson::new(nuv_flux as f64).unwrap();
-                                            let fuv = fuv_poisson.sample(&mut rng) as f64;
-                                            let nuv = nuv_poisson.sample(&mut rng) as f64;
-                                            detector.data[column + y_mod][row + x_mod][0] += fuv_flux;
-                                            detector.data[column + y_mod][row + x_mod][1] += nuv_flux;
-                                            detector.data[column + y_mod][row + x_mod][2] += fuv as f64 ;
-                                            detector.data[column + y_mod][row + x_mod][3] += nuv as f64 ;
-                                            //bin.sample(&mut rng) as f32;
-                                        }
-
-
-
-                                    }else{
-                                        // println!("dropping pixel");
-                                    }
-
-                                    // println!("modifying pixel {:?} to be {:?}",(row + x_mod,column + y_mod),binned_psf[column][row]);
-                                }
-                            }}
-                    }
-
-
-
-
-
-
-                }
-                // data[0][0]  += 100.0;
-
-                let size = detector.data.len();
-                let size2 = detector.data[0].len();
-
-                let sum:f64  = detector.data.iter().flatten().flatten().sum();
-                println!("Done computation: {:?} for detecgtor {:?}",sum,i);
-                detector.write(i);
-                let duration = start.elapsed();
-                println!("Time elapsed in expensive_function() is: {:?}, dropped {:?}", duration,dropped);
-
-                println!("made array, sum is  :{}, size is {:?}, {:?}",sum, size,size2);
-
-
-            });
-
-         */
-
-
-
-
-
-
-
-
 
 
     }

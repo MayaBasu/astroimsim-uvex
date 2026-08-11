@@ -31,11 +31,26 @@ The yellow dot marks the corner, the 0th grid point. In general, we may have dat
  ```rust let point_1 = Point::new(1.0,1.0,Coordinates::RELATIVE(coords1.clone()));
     let point_2 = Point::new(1.1,3.0,Coordinates::RELATIVE(coords1.clone()));
     let point_3 = Point::new(6.7,-2.5,Coordinates::RELATIVE(coords1.clone()));
+    let point_4 = Point::new(-4.5,-2.5,Coordinates::RELATIVE(coords1.clone()));
+
 
     grid1.plot_points(&mut plot, PlotPoint::Given(point_1));
     grid1.plot_points(&mut plot, PlotPoint::Given(point_2));
     grid1.plot_points(&mut plot, PlotPoint::Given(point_3));
+    grid1.plot_points(&mut plot, PlotPoint::Given(point_4));
  ```
 In the first three lines we define three points relative the the coordinate system of the grid. We can do this in the relative coordinates of both grids
 ![coordiante test](tests/grid1_points_test.png)
 ![coordiante test](tests/grid2_points_test.png)
+Trying to grid points outside of the perimeter of the grid will result in a panic. However, we can project the points on the grid first. This is useful for constant extensions of data given on a grid smaller than is needed. 
+ ```rust let point_1 = Point::new(1.0,1.0,Coordinates::RELATIVE(coords1.clone()));
+    let point_2 = Point::new(1.1,3.0,Coordinates::RELATIVE(coords1.clone()));
+    let point_3 = Point::new(6.7,-2.5,Coordinates::RELATIVE(coords1.clone()));
+    let point_4 = Point::new(-4.5,-2.5,Coordinates::RELATIVE(coords1.clone()));
+
+
+    grid1.plot_points(&mut plot, PlotPoint::Given(point_1));
+    grid1.plot_points(&mut plot, PlotPoint::Given(point_2));
+    grid1.plot_points(&mut plot, PlotPoint::Given(point_3));
+    grid1.plot_points(&mut plot, PlotPoint::Given(point_4));
+ ```
