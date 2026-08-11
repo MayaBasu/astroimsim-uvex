@@ -191,8 +191,7 @@ impl UVEX{
             flatfield_x_axis,
             flatfield_y_axis,
             (0.0,0.0),
-            "Detector Coordinate System",
-            "magenta");
+            "Detector Coordinate System");
         GRID2D::new_empty((num_pixels,num_pixels),(1.0,1.0),Point::new(-0.56,0.06,ABSOLUTE).convert(&RELATIVE(coordinate_system.clone())).values(),0.0000001,Coordinates::RELATIVE(coordinate_system))
         /*
         GRID2D::new_from_width(
@@ -272,7 +271,6 @@ impl UVEX{
             x_axis: (1.0,0.0),
             y_axis: (0.0,1.0),
             center: (0.0, 0.0),
-            color: "red",
             label: "fuv",
         };
         let mut grid = GRID2D::new_empty(
@@ -303,7 +301,6 @@ impl UVEX{
             x_axis: detectors_x_axis,
             y_axis: detectors_y_axis,
             center: (0.0, 0.0),
-            color: "red",
             label: "detector grid",
         };
         let detector_grid = GRID2D::new_empty(
