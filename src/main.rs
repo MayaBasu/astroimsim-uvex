@@ -4,6 +4,7 @@ use astroimsim_geometry::grid2d::GRID2D;
 use astroimsim_spectra::power_spectrum::PowerSpectrum;
 use astroimsim_spectra::spectral_response::SpectralResponseCurve;
 use astroimsim_spectra::visualize::STANDARD_SPECTRAL_GRID;
+use clap::Parser;
 use plotpy::Plot;
 use crate::benchmarktesting::benchpress;
 use crate::hallucinations::{hallucinate_custom_distribution, hallucinate_dead_pixel_map, hallucinate_normal_distribution};
@@ -15,13 +16,51 @@ mod benchmarktesting;
 mod config;
 mod detector_effects;
 mod notebook;
+mod parser;
 
 use crate::config::UseEffect;
 use crate::config::UseEffect::{On, Off};
 use crate::notebook::generate_test_notebook;
-
+use clap::{Arg, ArgAction, Command};
 fn main() {
-    
+    let cmd=Command::new("pacman")
+        .about("package manager utility")
+        .version("5.2.1")
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        // Query subcommand
+        //
+        // Only a few of its arguments are implemented below.
+        .subcommand(
+            Command::new("query")
+                .short_flag('Q')
+                .long_flag("query")
+                .about("Query the package database.")
+                .arg(
+                    Arg::new("search")
+                        .short('s')
+                        .long("search")
+                        .help("search locally installed packages for matching strings")
+                        .conflicts_with("info")
+                        .action(ArgAction::Set)
+                        .num_args(1..),
+                ));
+
+    let matches = cmd.get_matches();
+    let matches = match matches.subcommand() {
+        Some(("example", matches)) => matches,
+        _ => unreachable!("clap should ensure we don't get here"),
+    };
+    //let manifest_path = matches.get_one::<std::path::PathBuf>("manifest-path");
+    println!("{matches:?}");
+}
+
+// See also `clap_cargo::style::CLAP_STYLING`
+
+
+/*
+fn main() {
+
     generate_test_notebook();
 
 
@@ -35,7 +74,7 @@ fn main() {
                                50,
                                400,
                                50);
-                               
+
      */
     //hallucinate_normal_distribution(4096,"/Users/mayabasu/Desktop/uvex_psf_files/dar_current.fits", 0.0001,0.001);
 
@@ -61,7 +100,7 @@ fn main() {
     let colors = ["red","yellow", "blue",
         "purple", "orange", "black",
         "blue", "pink", "gray"];
-        
+
      */
 
     //for i in 0..9{
@@ -99,5 +138,7 @@ d    uvex.compare_flatfields(600);
 
 
 }
+
+ */
 
 

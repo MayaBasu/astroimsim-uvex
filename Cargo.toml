@@ -1,6 +1,6 @@
 [package]
 name = "astroimsim-uvex"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT"
 description = "UVEX specific code for the astroimsim ecosystem"
@@ -16,3 +16,6 @@ rayon = "1.12.0"
 serde_yaml = "0.9.34+deprecated"
 serde = { version = "1.0.228", features = ["derive"] }
 fitrs = "0.5.0"
+
+clap = { version = "4.0.0-rc.1" , features = ["derive"] }
+clap_derive = { version = "4.0.0-rc.1" }
