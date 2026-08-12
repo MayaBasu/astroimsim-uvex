@@ -5,6 +5,9 @@ edition = "2024"
 license = "MIT"
 description = "UVEX specific code for the astroimsim ecosystem"
 
+[http]
+multiplexing = false
+
 [dependencies]
 rand = "0.10.1"
 rand_distr = "0.6.0"
