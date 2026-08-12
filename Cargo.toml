@@ -7,6 +7,11 @@ description = "UVEX specific code for the astroimsim ecosystem"
 
 [http]
 multiplexing = false
+timeout = 60
+
+[net]
+retry = 5
+
 
 [dependencies]
 rand = "0.10.1"
