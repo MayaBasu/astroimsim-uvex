@@ -339,8 +339,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "astroimsim-uvex2"
-version = "0.1.0"
+name = "astroimsim-uvex"
+version = "0.1.2"
 dependencies = [
  "astroimsim-data",
  "astroimsim-geometry",
