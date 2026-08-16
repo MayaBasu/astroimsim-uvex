@@ -289,12 +289,14 @@ dependencies = [
 
 [[package]]
 name = "astroimsim-data"
-version = "0.1.18"
+version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6006a2ab2b8177e4b603a917f16e0cf9c58d606ff3196bbedeb8cec5b9ae5757"
+checksum = "63032052c234bb67c9d49c5f7a40a47036500ce594a443c815048ebcb4a25c8a"
 dependencies = [
  "astroimsim-geometry",
  "astroimsim-spectra",
+ "clap",
+ "clap_derive",
  "convolutions-rs",
  "convolve2d",
  "eframe",
@@ -312,9 +314,9 @@ dependencies = [
 
 [[package]]
 name = "astroimsim-geometry"
-version = "0.1.20"
+version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd601e1bb7901f5dfd0a65bf3f702bb243b7572f3b2095fd3641cfe04d453670"
+checksum = "dff9f1259c061ce57f96663661accd7b277623ff2c7fedec10e646dc2dbb17ff"
 dependencies = [
  "plotpy",
  "rand",
@@ -340,7 +342,7 @@ dependencies = [
 
 [[package]]
 name = "astroimsim-uvex"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "astroimsim-data",
  "astroimsim-geometry",

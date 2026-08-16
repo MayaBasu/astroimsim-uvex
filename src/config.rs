@@ -74,8 +74,8 @@ impl UVEXConfiguration{
             dichroic: (default.clone(),"/Users/mayabasu/Desktop/uvex/spectral_response/UVIM_dichroic_response.dat".to_string()),
             mirror_response: (default.clone(),"/Users/mayabasu/Desktop/uvex/spectral_response/mirror_reflectivity.dat".to_string()),
 
-            fuv_psf: (default.clone(),"/Users/mayabasu/Desktop/uvex/FUV_PSF".to_string(),"~/Desktop/uvex/FUV_PSF_BLURRED".to_string()),
-            nuv_psf: (default.clone(),"/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),"~/Desktop/uvex/NUV_PSF_BLURRED".to_string()),
+            fuv_psf: (default.clone(),"/Users/mayabasu/Desktop/uvex/FUV_PSF".to_string(),"/Users/mayabasu/Desktop/uvex/FUV_PSF_BLURRED".to_string()),
+            nuv_psf: (default.clone(),"/Users/mayabasu/Desktop/uvex/NUV_PSF".to_string(),"/Users/mayabasu/Desktop/uvex/NUV_PSF_BLURRED".to_string()),
 
             fuv_flatfield_illumination: (default.clone(),"/Users/mayabasu/Desktop/uvex/vinietting/FUV_vignetting_model_4096.fits".to_string()),
             nuv_flatfield_illumination: (default.clone(),"/Users/mayabasu/Desktop/uvex/vinietting/NUV_vignetting_model_4096.fits".to_string()),
@@ -104,7 +104,7 @@ impl UVEXConfiguration{
 
 
     pub fn to_yaml(&self, path:String){
-        println!("Writing configuration to {:?}", path);
+        println!("Writing configuration to {path}.yaml");
         let serialized_self = serde_yaml::to_string(&self).expect("Failed to YAMLify the object");
         let mut file = fs::File::create(path).expect("Couldn't create the config file");
         write!(file, "{}", serialized_self).expect("Failed to write YAML to config file");

@@ -65,8 +65,29 @@ fn main() {
 
 
 fn main() {
+    /*
+    //let config = UVEXConfiguration::default(UseEffect::On);
+    //config.to_yaml("configg".to_string());
+    let config = UVEXConfiguration::from_yaml("configg".to_string());
+    let mut uvex = UVEX::initialize(config);
+    let spectral_grid = astroimsim_spectra::visualize::STANDARD_SPECTRAL_GRID;
+    let spectrum = PowerSpectrum::flat_AB(20.0,spectral_grid,"Input Spectrum");
+    let sources = astroimsim_data::
+    point_sources::
+    FullSpectrumSourceList::
+    full_spectrum_point_source_field(100, 0.01, 1.0, spectrum, &uvex.fuv_flatfield.grid);
+    uvex.run((0.4,0.3), sources, 300.0);
 
-    generate_test_notebook();
+     */
+
+
+
+
+
+
+
+
+    //generate_test_notebook();
 
 
 
@@ -87,14 +108,24 @@ fn main() {
 
     //UVEX::generate_random_dead_pixel_map();
 
-   // let configuration = UVEXConfiguration::default(Off);
-   // configuration.to_yaml("config.yaml");
+    //let configuration = UVEXConfiguration::default(Off);
+    //configuration.to_yaml("config.yaml".to_string());
 
 
-    //let configuration = UVEXConfiguration::from_yaml("config.yaml");
+    let configuration = UVEXConfiguration::from_yaml("config.yaml".to_string());
 
     //UVEX::generate_missing_data(configuration)
-   //let mut uvex = UVEX::initialize(configuration);
+   let mut uvex = UVEX::initialize(configuration);
+
+    let spectrum = PowerSpectrum::flat_AB(20.0,STANDARD_SPECTRAL_GRID,"Input Spectrum");
+    let sources = astroimsim_data::
+    point_sources::
+    FullSpectrumSourceList::
+    full_spectrum_point_source_field(100, 0.01, 1.0, spectrum, &uvex.fuv_flatfield.grid);
+    uvex.run((0.4,0.3), sources, 300.0);
+    
+
+
 
 
    // let mut plot = Plot::new();
@@ -118,11 +149,11 @@ fn main() {
 
 
    // println!("FINISHED INITIALIZING");
-  //  let mut spectrum = PowerSpectrum::flat_AB(20.0,STANDARD_SPECTRAL_GRID,"Input Spectrum");
+    let mut spectrum = PowerSpectrum::flat_AB(20.0,STANDARD_SPECTRAL_GRID,"Input Spectrum");
   //  uvex.run((10.0,10.0),FullSpectrumSourceList::full_spectrum_point_source_field(1000, 100.0, 1000.0, spectrum, &uvex.fuv_flatfield.grid));
 
 
-
+    let a = STANDARD_SPECTRAL_GRID;
 
 
    // let psf_grid = uvex.fuv_psf;
@@ -144,6 +175,6 @@ d    uvex.compare_flatfields(600);
 
 }
 
- 
+
 
 
