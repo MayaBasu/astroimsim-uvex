@@ -103,7 +103,7 @@ impl UVEXConfiguration{
     }
 
 
-    pub fn to_yaml(&self, path:&'static str){
+    pub fn to_yaml(&self, path:String){
         println!("Writing configuration to {:?}", path);
         let serialized_self = serde_yaml::to_string(&self).expect("Failed to YAMLify the object");
         let mut file = fs::File::create(path).expect("Couldn't create the config file");
@@ -111,7 +111,7 @@ impl UVEXConfiguration{
 
     }
 
-    pub fn from_yaml(path:&'static str)-> UVEXConfiguration{
+    pub fn from_yaml(path:String)-> UVEXConfiguration{
         let config: String = fs::read_to_string(path).expect("couldn't read from config file");
         let config: UVEXConfiguration = serde_yaml::from_str(config.as_str()).expect("invalid details data");
         config
