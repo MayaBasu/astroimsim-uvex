@@ -11,17 +11,19 @@ use crate::hallucinations::{hallucinate_custom_distribution, hallucinate_dead_pi
 use crate::uvex_telescope::{UVEXConfiguration, UVEX};
 
 pub mod uvex_telescope;
-mod hallucinations;
-mod benchmarktesting;
-mod config;
-mod detector_effects;
-mod notebook;
-mod parser;
+pub mod hallucinations;
+pub mod benchmarktesting;
+pub mod config;
+pub mod detector_effects;
+pub mod notebook;
+pub mod parser;
 
 use crate::config::UseEffect;
 use crate::config::UseEffect::{On, Off};
 use crate::notebook::generate_test_notebook;
 use clap::{Arg, ArgAction, Command};
+
+/*
 fn main() {
     let cmd=Command::new("pacman")
         .about("package manager utility")
@@ -56,10 +58,12 @@ fn main() {
     println!("{matches:?}");
 }
 
+ */
+
 // See also `clap_cargo::style::CLAP_STYLING`
 
 
-/*
+
 fn main() {
 
     generate_test_notebook();
@@ -140,6 +144,6 @@ d    uvex.compare_flatfields(600);
 
 }
 
- */
+ 
 
 
