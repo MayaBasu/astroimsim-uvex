@@ -289,9 +289,9 @@ dependencies = [
 
 [[package]]
 name = "astroimsim-data"
-version = "0.1.20"
+version = "0.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63032052c234bb67c9d49c5f7a40a47036500ce594a443c815048ebcb4a25c8a"
+checksum = "c3abe1637bbbef43c6104697ee926f7b5eb215c493422df4528dcae13512707f"
 dependencies = [
  "astroimsim-geometry",
  "astroimsim-spectra",

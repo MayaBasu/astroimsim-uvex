@@ -1,22 +1,13 @@
 use std::io::Write;
-use std::fs;
-use rayon::iter::*;
 use std::time::Instant;
-use plotpy::Plot;
-use rand::distr::Distribution;
-use rand_distr::Poisson;
+use rayon::iter::*;
 use astroimsim_geometry::prelude::*;
+use astroimsim_geometry::prelude::Coordinates::{ABSOLUTE, RELATIVE};
 use astroimsim_spectra::spectral_response::SpectralResponseCurve;
 use astroimsim_data::prelude::*;
-use astroimsim_geometry::prelude::Coordinates::{ABSOLUTE, RELATIVE};
 pub(crate) use crate::config::{UVEXConfiguration, UseEffect};
 use crate::detector_effects;
 use crate::hallucinations::{hallucinate_dead_pixel_map, hallucinate_normal_distribution};
-/*
-Run time inputs:
-fuv/nuv exposure time
-sky background
-*/
 
 pub struct SpatialEffectArray{
     pub label: String,
@@ -48,19 +39,98 @@ pub struct UVEX{
 
 }
 
+pub enum DetectorSetup{
+    //make one giant output matrix which is resized to accommodate the 9 detectors and gap sizes
+    Single,
+    //make 9 output files, each a different detector plane
+    Multiple
+
+}
+
 impl UVEX{
     pub fn initialize(
-        config:UVEXConfiguration
+        config:UVEXConfiguration, mode: DetectorSetup
     )->UVEX {
-        let num_pixels = 4096;  //pixels per detector
 
-        let detector_width = 1.0; //detector width in degrees
-        let x_detectors = 3; //number of detectors in x directions
+        /*
+        The following are parameters which probably do not need to be changed during typical use
+        so they are not in the configuration file.
+         */
+
+        //keys for FITS header of PSF files
+        let center_keys = ("XFLD".to_string(), "YFLD".to_string());
+        //pixels per detector plane
+        let num_pixels_per_detector = 4096;
+        //detector width in degrees
+        let detector_width_deg = 12.0_f64.sqrt()/3.0;
+        //number of detector planes in x direction
+        let x_detectors = 3;
+        //number of detectors planes the y direction
         let y_detectors = 3;
+        //location of the center of the detector plane grid, in deg
         let detector_plane_center = Point::new(-0.56, -0.06,ABSOLUTE);
-        let x_gap = config.x_gap; //gap size in degrees TODO
-        let y_gap = config.y_gap;
-        let center_keys = ("XFLD".to_string(), "YFLD".to_string()); //keys for FITS header of PSF files
+        //The gap size for the x and y directions comes from the configuration file.
+        let x_gap_mm = config.x_gap; //x gap size in mm
+        let y_gap_mm = config.y_gap; //y gap size in mm
+
+        let mm_to_deg = detector_width_deg/(num_pixels_per_detector as f64/100.0);
+        //TODO: this is just a guess! Needs to be fixed.
+        //TODO: Assuming detector width in deg is equal to the number of pixels times 100th of a millimeter per pixel
+
+        //x gap size in deg
+        let x_gap_deg = x_gap_mm*mm_to_deg;
+        //y gap size in deg
+        let y_gap_deg = y_gap_mm*mm_to_deg;
+
+        println!("Using {x_gap_mm}mm, {y_gap_mm}mm gaps, or {x_gap_deg}deg, {y_gap_deg}deg");
+
+
+        let (detector_array, detector_grid)= UVEX::uvex_detector_array(
+            num_pixels_per_detector,
+            num_pixels_per_detector,
+            x_detectors,
+            y_detectors,
+            x_gap_deg,
+            y_gap_deg,
+            detector_width_deg,
+            detector_plane_center.clone());
+
+        let (output_array, output_grid) = match mode {
+            DetectorSetup::Single => {
+                //Single matrix holding the whole output
+                //The x_gap should be given in mm, but we are taking it in degrees right now
+                //If it was in mm then this would be simple, mm = 10^-3,
+                // one pixel is 10 micro meters 10^-5, so if we have 5 mm gaps this will add another 1k
+                // This isn't so bad!
+                let x_gap_size_pixels = (config.x_gap/100.0) as usize;
+                let y_gap_size_pixels = (config.y_gap/100.0) as usize;
+                println!("The x gap is {x_gap_mm} mm, adding {x_gap_size_pixels} pixels ");
+                println!("The y gap is {y_gap_mm} mm, adding {y_gap_size_pixels} pixels ");
+                let x_num_pix = num_pixels_per_detector*x_detectors + (x_detectors-1)*x_gap_size_pixels;
+                let y_num_pix = num_pixels_per_detector*y_detectors + (y_detectors-1)*y_gap_size_pixels;
+
+                UVEX::uvex_detector_array(
+                    x_num_pix,
+                    y_num_pix,
+                    x_detectors,
+                    y_detectors,
+                    x_gap_deg,
+                    y_gap_deg,
+                    detector_width_deg,
+                    detector_plane_center.clone())
+            }
+            DetectorSetup::Multiple => {
+                UVEX::uvex_detector_array(
+                    num_pixels_per_detector,
+                    num_pixels_per_detector,
+                    x_detectors,
+                    y_detectors,
+                    x_gap_deg,
+                    y_gap_deg,
+                    detector_width_deg,
+                    detector_plane_center.clone())//TODO REPLACE WITH CLONE IMPLEMENTATION
+            }
+        };
 
         //Load in FUV and NUV flat field illumination
         let mut fuv_flatfield = SpatialEffect::new_empty(
@@ -98,16 +168,6 @@ impl UVEX{
         //Compose the detector effects
 
 
-        //make detector grid
-        let (detector_array, detector_grid)= UVEX::uvex_detector_array(
-            num_pixels,
-            x_detectors,
-            y_detectors,
-            x_gap,
-            y_gap,
-            detector_width,
-            detector_plane_center);
-
         let dead_pixels = detector_effects::dead_pixels(&detector_array);
         let read_noise = detector_effects::read_noise(&detector_array);
         let dark_current = detector_effects::load_detector_effects(&detector_array,
@@ -138,14 +198,6 @@ impl UVEX{
         blurred_nuv_psf.load_data_frames(64,64);
 
 
-
-
-
-
-
-
-
-
         let uvex = UVEX{
             config:config.clone(),
             fuv_spectral_response,
@@ -158,7 +210,7 @@ impl UVEX{
             blurred_fuv_psf,
             blurred_nuv_psf,
 
-            detector_array,
+            detector_array:output_array,
             dead_pixel_maps: dead_pixels,
             read_noise_maps: read_noise,
             dark_current_maps: dark_current,
@@ -284,7 +336,8 @@ impl UVEX{
     }
 
     pub fn uvex_detector_array(
-        num_pixels: usize,
+        num_pixels_x: usize,
+        num_pixels_y:usize,
         x_num:usize,
         y_num:usize,
         x_gap_deg:f64,
@@ -292,9 +345,10 @@ impl UVEX{
         detector_width_deg:f64,
         detector_grid_center:Point) -> (DetectorArray,GRID2D){
 
-        let pixel_to_deg_scale = detector_width_deg/num_pixels as f64; //Degrees in FOV to pixels
-        let detectors_x_axis = (pixel_to_deg_scale,0.0);
-        let detectors_y_axis = (0.0,pixel_to_deg_scale);
+        let x_pixel_to_deg_scale = detector_width_deg/num_pixels_x as f64; //Degrees in FOV to pixels
+        let y_pixel_to_deg_scale = detector_width_deg/num_pixels_y as f64; //Degrees in FOV to pixels
+        let detectors_x_axis = (x_pixel_to_deg_scale,0.0);
+        let detectors_y_axis = (0.0,y_pixel_to_deg_scale);
 
         let coordinate_system = CoordinateSystem{
             x_axis: detectors_x_axis,
@@ -318,7 +372,8 @@ impl UVEX{
             detectors.push(UVEX::new_uvex_detector(
                 point.to_string(),
                 center,
-                num_pixels,
+                num_pixels_x,
+                num_pixels_y,
                 RELATIVE(coordinate_system.clone())))
 
         }
@@ -330,13 +385,13 @@ impl UVEX{
         }, detector_grid)
     }
 
-    pub fn new_uvex_detector(label: String, center:Point,num_pixels:usize,coordinates: Coordinates) -> Detector {
+    pub fn new_uvex_detector(label: String, center:Point,x_num_pixels:usize, y_num_pixels:usize,coordinates: Coordinates) -> Detector {
 
-        let grid = GRID2D::new_empty((num_pixels, num_pixels), (1.0, 1.0), center.convert(&coordinates).values(), 0.001, coordinates);
-        let mut data = Vec::with_capacity(num_pixels*num_pixels);
-        for _row in 0..num_pixels{
-            let mut row_vec = Vec::with_capacity(num_pixels);
-            for _column in 0..num_pixels{
+        let grid = GRID2D::new_empty((x_num_pixels, y_num_pixels), (1.0, 1.0), center.convert(&coordinates).values(), 0.001, coordinates);
+        let mut data = Vec::with_capacity(x_num_pixels*y_num_pixels);
+        for _row in 0..y_num_pixels{
+            let mut row_vec = Vec::with_capacity(x_num_pixels);
+            for _column in 0..x_num_pixels{
                 row_vec.push([0.0;2]) //TODO initialize straight with background or no data for efficiency?
             }
             data.push(row_vec);
@@ -389,49 +444,39 @@ impl UVEX{
     }
 
 
-    pub fn run(&mut self, background:(f64,f64), mut source_list: FullSpectrumSourceList, exposure_time:f64) {
+    pub fn run(&mut self, background:(f64,f64), mut source_list: FullSpectrumSourceList, exposure_time:(f64,f64), output_directory_path:String) {
+
         /*
         Exposure time is in seconds
+        Background - average electrons per second
+        //TODO how is this going to be converted from photons with spectral dependent QE?
          */
 
         let start = Instant::now();
-        for i in 0..9{
-            self.detector_array.detectors[i].create_constant_background(background.0,background.1);
+        (0..self.detector_array.detectors.len()).into_par_iter().for_each(|i|{
+            let mut detector = self.detector_array.detectors[i].clone();
 
 
-            match self.config.read_noise.0 {
-                UseEffect::On => {
-                    self.detector_array.detectors[i].add_effect(self.read_noise_maps.effects[i].1.clone(), 0,EffectType::Once);
-                }
-                UseEffect::Off => { println!("Read Noise is Turnned Off") }
-            }
-            match self.config.dark_current.0 {
-                UseEffect::On => {
-                    self.detector_array.detectors[i].add_effect(self.dark_current_maps.effects[i].1.clone(), 0,EffectType::Exposure(exposure_time));
-                }
-                UseEffect::Off => { println!("dark current is turned off") }
-            }
+            detector.create_constant_background(
+                background.0*exposure_time.0,
+                background.1*exposure_time.1);
 
-
-            //self.detector_array.detectors[0].write(13);
 
 
             let mut dropped = 0;
-            let detector_grid = self.detector_array.detectors[i].grid.clone();
+            let detector_grid = detector.grid.clone();
             for (num, point) in source_list.sources.iter().enumerate() {
-                if num % 100 == 0 {
-                    println!("Done {:?} sources for detector number {:?}", num, i)
+                if (num % 100 == 0)&& (num>0) {
+                    println!("Done {num} sources for detector number {i}");
                 }
                 let bands = point.to_bands(&self.fuv_spectral_response, &self.nuv_spectral_response, UVEX::area());
 
-                let mut rng = rand::rng();
 
                 match detector_grid.inside_or_outside(&point.point) { //TODO remove many unneeded clone() calls by borrowing Points
                     Location::Outside => { dropped += 1 }
                     Location::Inside => {
                         let psf = self.blurred_fuv_psf.interpolated_psf(&point.point);
                         let ((x_mod, y_mod), binned_psf) = detector_grid.bin_up_patch(point.point.clone(), &psf, 10); //TODO scale is fixed
-                        //println!("{:?}",(x_mod,y_mod));
                         let binned_matrix_x = binned_psf[0].len();
                         let binned_matrix_y = binned_psf.len();
 
@@ -452,8 +497,8 @@ impl UVEX{
                                         //   let nuv_poisson = Poisson::new(nuv_flux as f64).unwrap();
                                         //   let fuv = fuv_poisson.sample(&mut rng) as f64;
                                         //  let nuv = nuv_poisson.sample(&mut rng) as f64;
-                                        self.detector_array.detectors[i].data[column + y_mod][row + x_mod][0] += fuv_flux;
-                                        self.detector_array.detectors[i].data[column + y_mod][row + x_mod][1] += nuv_flux;
+                                        detector.data[column + y_mod][row + x_mod][0] += fuv_flux;
+                                        detector.data[column + y_mod][row + x_mod][1] += nuv_flux;
                                         // self.detector_array.detectors[0].data[column + y_mod][row + x_mod][2] += fuv as f64 ;
                                         // self.detector_array.detectors[0].data[column + y_mod][row + x_mod][3] += nuv as f64 ;
                                         //bin.sample(&mut rng) as f32;
@@ -468,54 +513,53 @@ impl UVEX{
                     }
                 }
 
-
                 // data[0][0]  += 100.0;
 
+            }
+            println!("Done adding point sources in {:?}s, sum is {:?}", start.elapsed().as_secs(),detector.data.iter().flatten().flatten().sum::<f64>());
+
+
+
+
+            match self.config.read_noise.0 {
+                UseEffect::On => {
+                    //Add the effect to both FUV and NUV channels
+                    detector.add_effect(&self.read_noise_maps.effects[i].1, 0,EffectType::Once);
+                    detector.add_effect(&self.read_noise_maps.effects[i].1, 1,EffectType::Once);
+                }
+                UseEffect::Off => { if i==0{println!("Warning: Read Noise is Turned Off")} }
+            }
+            match self.config.dark_current.0 {
+                UseEffect::On => {
+                    detector.add_effect(&self.dark_current_maps.effects[i].1, 0,EffectType::Exposure(exposure_time.0));
+                    detector.add_effect(&self.dark_current_maps.effects[i].1, 1,EffectType::Exposure(exposure_time.1));
+
+                }
+                UseEffect::Off => { if i==0{println!("Warning: Dark Current is Turned Off")}}
             }
 
             match self.config.fuv_flatfield_illumination.0 {
                 UseEffect::On => {
-                    for row in 0..self.detector_array.detectors[i].grid.y_num {
-                        for column in 0..self.detector_array.detectors[i].grid.x_num {
-                            let grid_number = self.detector_array.detectors[i].grid.grid_number(column, row);
-                            let location = self.detector_array.detectors[i].grid.locate(grid_number);
-                            let fuv_vinietting = self.fuv_flatfield.get_data(&location);
-                            //   println!("{fuv_vinietting} {grid_number} {:?}",location.to_absolute());
-                            //  println!("{:?}", self.fuv_flatfield.grid.locate(0).to_absolute());
-                            //  println!("{:?}", self.detector_array.detectors[i].grid.locate(0).to_absolute());
-
-                            let nuv_vinietting = self.nuv_flatfield.get_data(&location);
-                            self.detector_array.detectors[i].data[column][row][0] = self.detector_array.detectors[i].data[column][row][0] * fuv_vinietting;
-                            self.detector_array.detectors[i].data[column][row][1] = self.detector_array.detectors[i].data[column][row][1] * nuv_vinietting;
-                        }
-                    }
-                } //TODO remove this clone
-                UseEffect::Off => { println!("vinietting is off") }
+                    detector.multiply_interpolated_effect(&self.fuv_flatfield,0);
+                    detector.multiply_interpolated_effect(&self.nuv_flatfield,1);
+                }
+                UseEffect::Off => { if i ==0 {println!("FUV and NUV vinietting is turned off")} }
             }
 
             match self.config.dead_pixels.0 {
                 UseEffect::On => {
-                    self.detector_array.detectors[i].multiply_effect(self.dead_pixel_maps.effects[i].1.clone(), 0,EffectType::Once);
+                    detector.multiply_effect(&self.dead_pixel_maps.effects[i].1, 0,EffectType::Once);
+                    detector.multiply_effect(&self.dead_pixel_maps.effects[i].1, 1,EffectType::Once);
                 }
-                UseEffect::Off => {
-                    println!("Dead pixel map is turrned off")
-                }
+                UseEffect::Off => { if i ==0 {println!("Dead pixel map is turned off") }}
             }
-
-            let size = self.detector_array.detectors[i].data.len();
-            let size2 = self.detector_array.detectors[i].data[0].len();
-
-            let sum: f64 = self.detector_array.detectors[i].data.iter().flatten().flatten().sum();
-            println!("Done computation: {:?} for detecgtor {:?}", sum, i);
-            self.detector_array.detectors[i].write(i);
-            let duration = start.elapsed();
-            println!("Time elapsed in expensive_function() is: {:?}, dropped {:?}", duration, dropped);
-
-            println!("made array, sum is  :{}, size is {:?}, {:?}", sum, size, size2);
+            detector.write(output_directory_path.clone(),i);
 
 
+        });
+        let duration = start.elapsed();
+        println!("Total run time {:?}s", duration.as_secs());
 
-        }
 
 
     }

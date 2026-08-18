@@ -8,7 +8,7 @@ use clap::Parser;
 use plotpy::Plot;
 use crate::benchmarktesting::benchpress;
 use crate::hallucinations::{hallucinate_custom_distribution, hallucinate_dead_pixel_map, hallucinate_normal_distribution};
-use crate::uvex_telescope::{UVEXConfiguration, UVEX};
+use crate::uvex_telescope::{DetectorSetup, UVEXConfiguration, UVEX};
 
 pub mod uvex_telescope;
 pub mod hallucinations;
@@ -17,6 +17,7 @@ pub mod config;
 pub mod detector_effects;
 pub mod notebook;
 pub mod parser;
+pub mod star_reader;
 
 use crate::config::UseEffect;
 use crate::config::UseEffect::{On, Off};
@@ -65,6 +66,9 @@ fn main() {
 
 
 fn main() {
+    //star_reader::read_stars();
+
+
     /*
     //let config = UVEXConfiguration::default(UseEffect::On);
     //config.to_yaml("configg".to_string());
@@ -108,22 +112,23 @@ fn main() {
 
     //UVEX::generate_random_dead_pixel_map();
 
-    //let configuration = UVEXConfiguration::default(Off);
-    //configuration.to_yaml("config.yaml".to_string());
+
+   // let configuration = UVEXConfiguration::default(On);
+   // configuration.to_yaml("config.yaml".to_string());
 
 
     let configuration = UVEXConfiguration::from_yaml("config.yaml".to_string());
 
     //UVEX::generate_missing_data(configuration)
-   let mut uvex = UVEX::initialize(configuration);
+   let mut uvex = UVEX::initialize(configuration, DetectorSetup::Single);
 
     let spectrum = PowerSpectrum::flat_AB(20.0,STANDARD_SPECTRAL_GRID,"Input Spectrum");
     let sources = astroimsim_data::
     point_sources::
     FullSpectrumSourceList::
-    full_spectrum_point_source_field(100, 0.01, 1.0, spectrum, &uvex.fuv_flatfield.grid);
-    uvex.run((0.4,0.3), sources, 300.0);
-    
+    full_spectrum_point_source_field(10000, 100.0, 1000.0, spectrum, &uvex.fuv_flatfield.grid);
+    uvex.run((0.01,0.02), sources, (300.0,900.0),"/Users/mayabasu/Desktop/test_outputs".to_string());
+
 
 
 
